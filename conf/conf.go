@@ -31,7 +31,7 @@ func ReadServerConf() (ServerConf, error) {
 // ClientConf contains the server configuration addresses
 type ClientConf struct {
 	EventAddr  string `json:"eventAddr"`
-	TargetAddr string `json:"TistenAddr"`
+	TargetAddr string `json:"targetAddr"`
 }
 
 // ReadClientConf reads the config file
