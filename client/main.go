@@ -44,7 +44,7 @@ func main() {
 	globalEventPipe = connev.NewEventHandler(connEvents)
 
 	for e := range globalEventPipe.Output {
-		log.Println(e)
+		//log.Println(e)
 		switch e.T {
 		case "Connect":
 			conn, err := net.Dial("tcp", conf.TargetAddr)

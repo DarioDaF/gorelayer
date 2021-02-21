@@ -41,7 +41,7 @@ func handleEvents() {
 		log.Println("Connecting to pipe")
 		if globalEventPipe.Output != nil {
 			for e := range globalEventPipe.Output {
-				log.Println(e)
+				//log.Println(e)
 				switch e.T {
 				case "Connect":
 					// Should NEVER HAPPEN!
