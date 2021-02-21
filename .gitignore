@@ -1,0 +1,5 @@
+.vscode
+go.sum
+
+server.json
+client.json
