@@ -113,7 +113,7 @@ func (holder *SockUIDHolder) NewEventData(conn net.Conn, data []byte) Event {
 	var e Event
 	e.T = "Data"
 	e.UID = holder.GetConnUID(conn)
-	e.Data = data
+	copy(e.Data, data)
 	return e
 }
 
