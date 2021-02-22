@@ -163,9 +163,15 @@ func writeEvents(writer io.Writer, ch <-chan Event) {
 		bdata, err := bson.Marshal(e)
 		Check(err)
 		_, err = comp.Write(bdata)
-		Check(err)
+		if err != nil {
+			log.Println("Cannot write on event stream")
+			return // Should also close?
+		}
 		err = comp.Flush()
-		Check(err)
+		if err != nil {
+			log.Println("Cannot flush event stream")
+			return // Should also close?
+		}
 	}
 	// Channel got closed, send Exit?
 	bdata, err := bson.Marshal(NewEventExit())
