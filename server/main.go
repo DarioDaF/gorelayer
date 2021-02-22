@@ -76,6 +76,7 @@ func handleEventServer(eventServer net.Listener) {
 			lastConn.Close()
 		}
 		lastConn = conn
+		log.Printf("NewHandler: %s\n", lastConn.RemoteAddr())
 		globalEventPipe = connev.NewEventHandler(lastConn)
 	}
 }

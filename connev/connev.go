@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -129,8 +130,12 @@ func NewEventExit() Event {
 
 // ReadEvents is a goroutine to push all events from this connection into ch
 func readEvents(reader io.Reader, ch chan<- Event) {
+	defer close(ch)
 	decomp, err := gzip.NewReader(reader)
-	Check(err)
+	if err != nil {
+		log.Println("Invalid connection header")
+		return // Should also close?
+	}
 	defer decomp.Close()
 
 	var e Event
@@ -147,8 +152,6 @@ func readEvents(reader io.Reader, ch chan<- Event) {
 			break // Normal exit
 		}
 	}
-	// No data will be received, close channel?
-	close(ch)
 }
 
 // WriteEvents is a goroutine to push all events from ch into the writer
