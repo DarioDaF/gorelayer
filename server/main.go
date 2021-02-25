@@ -40,6 +40,7 @@ func handleEvents() {
 	for {
 		log.Println("Connecting to pipe")
 		if globalEventPipe.Output != nil {
+		EventLoop:
 			for e := range globalEventPipe.Output {
 				//log.Println(e)
 				switch e.T {
@@ -58,7 +59,9 @@ func handleEvents() {
 						Check(err)
 					}
 				case "Exit":
-					break
+					break EventLoop
+				case "Ping":
+					// NOOP
 				}
 			}
 		}

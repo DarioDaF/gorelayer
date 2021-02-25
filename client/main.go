@@ -5,6 +5,7 @@ import (
 	"gorelayer/connev"
 	"log"
 	"net"
+	"time"
 )
 
 // Check will assert no error occoured and panic otherwise
@@ -43,6 +44,14 @@ func main() {
 	globalHolder = connev.NewSockUIDHolder()
 	globalEventPipe = connev.NewEventHandler(connEvents)
 
+	go func() {
+		for {
+			globalEventPipe.Input <- connev.NewEventPing()
+			time.Sleep(40 * time.Second)
+		}
+	}()
+
+EventLoop:
 	for e := range globalEventPipe.Output {
 		//log.Println(e)
 		switch e.T {
@@ -63,7 +72,9 @@ func main() {
 				Check(err)
 			}
 		case "Exit":
-			break
+			break EventLoop
+		case "Ping":
+			// NOOP
 		}
 	}
 }

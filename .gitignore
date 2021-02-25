@@ -1,5 +1,7 @@
 .vscode
 go.sum
 
+test
+
 server.json
 client.json

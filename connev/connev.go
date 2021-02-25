@@ -128,6 +128,15 @@ func NewEventExit() Event {
 	return e
 }
 
+// NewEventPing creates a new event of type Ping
+func NewEventPing() Event {
+	var e Event
+	e.T = "Ping"
+	e.UID = ""
+	e.Data = nil
+	return e
+}
+
 // ReadEvents is a goroutine to push all events from this connection into ch
 func readEvents(reader io.Reader, ch chan<- Event) {
 	defer close(ch)
