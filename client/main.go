@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"errors"
 	"gorelayer/conf"
 	"gorelayer/connev"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -25,19 +28,27 @@ func handleConn(conn net.Conn) {
 	for {
 		// Should also wait for data to send back or potential disconnects?
 		nRead, err := conn.Read(buff)
+		if nRead > 0 {
+			globalEventPipe.Input <- globalHolder.NewEventData(conn, buff[0:nRead])
+		}
 		if err != nil {
-			log.Printf("Failed read: %s | %d\n", err.Error(), nRead)
+			// This next line needs go >= 1.16 to avoid hacky dumb code
+			// related to issue https://github.com/golang/go/issues/4373
+			if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+				log.Printf("Failed read: %s | %d\n", err.Error(), nRead)
+			}
 			break // Should Log
 		}
-		globalEventPipe.Input <- globalHolder.NewEventData(conn, buff[0:nRead])
 	}
 }
 
 func main() {
-	conf, err := conf.ReadClientConf()
+	cfg, err := conf.ReadClientConf()
 	Check(err)
 
-	connEvents, err := net.Dial("tcp", conf.EventAddr)
+	tlsConf, err := conf.GetTLSConfig("client", "server")
+	Check(err)
+	connEvents, err := tls.Dial("tcp", cfg.EventAddr, tlsConf)
 	Check(err)
 	defer connEvents.Close()
 
@@ -56,9 +67,10 @@ EventLoop:
 		//log.Println(e)
 		switch e.T {
 		case "Connect":
-			conn, err := net.Dial("tcp", conf.TargetAddr)
+			conn, err := net.Dial("tcp", cfg.TargetAddr)
 			Check(err)
 			globalHolder.SetConnUID(conn, e.UID)
+			log.Printf("+%s\n", globalHolder.GetConnUID(conn))
 			go handleConn(conn)
 		case "Disconnect":
 			conn := globalHolder.GetConnFromUID(e.UID)

@@ -1,6 +1,8 @@
 package conf
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -32,6 +34,30 @@ func ReadServerConf() (ServerConf, error) {
 type ClientConf struct {
 	EventAddr  string `json:"eventAddr"`
 	TargetAddr string `json:"targetAddr"`
+}
+
+// GetTLSConfig returns the TLS configuration with direction from -> to
+func GetTLSConfig(from string, to string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair("./cert/"+from+".crt", "./cert/"+from+".key")
+	if err != nil {
+		return nil, err
+	}
+	myPool := x509.NewCertPool()
+	{
+		b, err := ioutil.ReadFile("./cert/" + to + ".crt")
+		if err != nil {
+			return nil, err
+		}
+		myPool.AppendCertsFromPEM(b)
+	}
+	tlsConf := &tls.Config{
+		RootCAs:            myPool,
+		ClientAuth:         tls.RequireAndVerifyClientCert,
+		ClientCAs:          myPool,
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}
+	return tlsConf, nil
 }
 
 // ReadClientConf reads the config file

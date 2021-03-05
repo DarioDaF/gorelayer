@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
+	"errors"
 	"gorelayer/conf"
 	"gorelayer/connev"
+	"io"
 	"log"
 	"net"
 	"time"
@@ -28,11 +31,17 @@ func handleConn(conn net.Conn) {
 	for {
 		// Should also wait for data to send back or potential disconnects
 		nRead, err := conn.Read(buff)
+		if nRead > 0 {
+			globalEventPipe.Input <- globalHolder.NewEventData(conn, buff[0:nRead])
+		}
 		if err != nil {
-			log.Printf("Failed read: %s | %d\n", err.Error(), nRead)
+			// This next line needs go >= 1.16 to avoid hacky dumb code
+			// related to issue https://github.com/golang/go/issues/4373
+			if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) {
+				log.Printf("Failed read: %s | %d\n", err.Error(), nRead)
+			}
 			break // Should Log
 		}
-		globalEventPipe.Input <- globalHolder.NewEventData(conn, buff[0:nRead])
 	}
 }
 
@@ -85,14 +94,16 @@ func handleEventServer(eventServer net.Listener) {
 }
 
 func main() {
-	conf, err := conf.ReadServerConf()
+	cfg, err := conf.ReadServerConf()
 	Check(err)
 
-	l, err := net.Listen("tcp", conf.ListenAddr)
+	l, err := net.Listen("tcp", cfg.ListenAddr)
 	Check(err)
 	defer l.Close()
 
-	lEvents, err := net.Listen("tcp", conf.EventAddr)
+	tlsConf, err := conf.GetTLSConfig("server", "client")
+	Check(err)
+	lEvents, err := tls.Listen("tcp", cfg.EventAddr, tlsConf)
 	Check(err)
 	defer lEvents.Close()
 
