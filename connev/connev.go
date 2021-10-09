@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/oklog/ulid"
@@ -31,35 +32,46 @@ type Event struct {
 type SockUIDHolder struct {
 	socket2uid map[net.Conn]string
 	uid2socket map[string]net.Conn
+	suidMutex  sync.RWMutex
 }
 
 // NewSockUIDHolder creates a new SockUIDHolder
-func NewSockUIDHolder() SockUIDHolder {
+func NewSockUIDHolder() *SockUIDHolder {
 	var res SockUIDHolder
 	res.socket2uid = make(map[net.Conn]string)
 	res.uid2socket = make(map[string]net.Conn)
-	return res
+	return &res
 }
 
 // GetConnFromUID returns a connection from the given uid
 func (holder *SockUIDHolder) GetConnFromUID(uid string) net.Conn {
-	return holder.uid2socket[uid]
+	holder.suidMutex.RLock()
+	res := holder.uid2socket[uid]
+	holder.suidMutex.RUnlock()
+	return res
 }
 
 // GetConnUID returns a uid from the given connection
 func (holder *SockUIDHolder) GetConnUID(conn net.Conn) string {
-	return holder.socket2uid[conn]
+	holder.suidMutex.RLock()
+	res := holder.socket2uid[conn]
+	holder.suidMutex.RUnlock()
+	return res
 }
 
 // SetConnUID adds a connection with given external uid to the list
 func (holder *SockUIDHolder) SetConnUID(conn net.Conn, uid string) {
+	holder.suidMutex.Lock()
 	holder.socket2uid[conn] = uid
 	holder.uid2socket[uid] = conn
+	holder.suidMutex.Unlock()
 }
 
 // CreateConnUID returns a uid from the given connection adding it to the holder if necessary
 func (holder *SockUIDHolder) CreateConnUID(conn net.Conn) string {
+	holder.suidMutex.RLock()
 	uid, ok := holder.socket2uid[conn]
+	holder.suidMutex.RUnlock()
 	if !ok {
 		t := time.Now().UTC()
 		entropy := rand.New(rand.NewSource(t.UnixNano()))
@@ -72,22 +84,28 @@ func (holder *SockUIDHolder) CreateConnUID(conn net.Conn) string {
 
 // RemoveConnFromUID removes a connection form the holder returning it (usually to be closed)
 func (holder *SockUIDHolder) RemoveConnFromUID(uid string) net.Conn {
+	holder.suidMutex.RLock()
 	conn, ok := holder.uid2socket[uid]
+	holder.suidMutex.RUnlock()
 	if ok {
+		holder.suidMutex.Lock()
 		delete(holder.uid2socket, uid)
 		delete(holder.socket2uid, conn)
+		holder.suidMutex.Unlock()
 	}
 	return conn
 }
 
 // RemoveConnUID removes a connection form the holder returning its uid (remember to close it afterwards)
 func (holder *SockUIDHolder) RemoveConnUID(conn net.Conn) string {
+	holder.suidMutex.Lock()
 	uid, ok := holder.socket2uid[conn]
 	if ok {
 		conn.Close()
 		delete(holder.uid2socket, uid)
 		delete(holder.socket2uid, conn)
 	}
+	holder.suidMutex.Unlock()
 	return uid
 }
 

@@ -15,7 +15,7 @@ import (
 var Check = connev.Check
 
 var globalEventPipe connev.EventPipe
-var globalHolder connev.SockUIDHolder
+var globalHolder *connev.SockUIDHolder
 
 func handleConn(conn net.Conn) {
 	// Send that I just got connected
